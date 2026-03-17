@@ -1,13 +1,13 @@
-/**
- * Use Case 2: Room Initialization
- * Demonstrates abstraction, inheritance, and polymorphism
- * in the Hotel Booking Management System.
- */
-abstract class Room {
+import java.util.HashMap;
 
-    protected int beds;
-    protected int size;
-    protected double pricePerNight;
+/**
+ * Room class representing basic room details
+ */
+class Room {
+
+    int beds;
+    int size;
+    double pricePerNight;
 
     public Room(int beds, int size, double pricePerNight) {
         this.beds = beds;
@@ -22,54 +22,56 @@ abstract class Room {
     }
 }
 
-/* Single Room */
-class SingleRoom extends Room {
-    public SingleRoom() {
-        super(1, 250, 1500.0);
-    }
-}
+/**
+ * RoomInventory manages centralized availability using HashMap
+ */
+class RoomInventory {
 
-/* Double Room */
-class DoubleRoom extends Room {
-    public DoubleRoom() {
-        super(2, 400, 2500.0);
-    }
-}
+    private HashMap<String, Integer> availability;
 
-/* Suite Room */
-class SuiteRoom extends Room {
-    public SuiteRoom() {
-        super(3, 750, 5000.0);
+    public RoomInventory() {
+        availability = new HashMap<>();
+
+        // Initialize inventory
+        availability.put("Single", 5);
+        availability.put("Double", 3);
+        availability.put("Suite", 2);
+    }
+
+    public int getAvailableRooms(String type) {
+        return availability.get(type);
+    }
+
+    public void updateAvailability(String type, int count) {
+        availability.put(type, count);
     }
 }
 
 /**
- * Application Entry Point
+ * Use Case 3: Inventory Setup
  */
 public class BookMyStay {
 
     public static void main(String[] args) {
 
-        System.out.println("Hotel Room Initialization\n");
+        System.out.println("Hotel Room Inventory Status\n");
 
-        Room singleRoom = new SingleRoom();
-        Room doubleRoom = new DoubleRoom();
-        Room suiteRoom = new SuiteRoom();
+        Room single = new Room(1, 250, 1500.0);
+        Room doubleRoom = new Room(2, 400, 2500.0);
+        Room suite = new Room(3, 750, 5000.0);
 
-        int singleAvailable = 5;
-        int doubleAvailable = 3;
-        int suiteAvailable = 2;
+        RoomInventory inventory = new RoomInventory();
 
         System.out.println("Single Room:");
-        singleRoom.displayDetails();
-        System.out.println("Available: " + singleAvailable + "\n");
+        single.displayDetails();
+        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Single") + "\n");
 
         System.out.println("Double Room:");
         doubleRoom.displayDetails();
-        System.out.println("Available: " + doubleAvailable + "\n");
+        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Double") + "\n");
 
         System.out.println("Suite Room:");
-        suiteRoom.displayDetails();
-        System.out.println("Available: " + suiteAvailable);
+        suite.displayDetails();
+        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Suite"));
     }
 }
