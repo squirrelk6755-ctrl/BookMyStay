@@ -45,6 +45,7 @@ class BookingRequestQueue {
                     + " | Nights: " + r.getNights());
         }
     }
+}
 
     public Queue<Reservation> getRequestQueue() {
         return requestQueue;
