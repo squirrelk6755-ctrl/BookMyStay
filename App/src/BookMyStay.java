@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -55,10 +56,12 @@ class RoomInventory {
     public boolean isValidRoomType(String roomType) {
         return roomAvailability.containsKey(roomType);
     }
+}
 
     public boolean isAvailable(String roomType) {
         return roomAvailability.getOrDefault(roomType, 0) > 0;
     }
+}
 
     public void decrementAvailability(String roomType) {
         roomAvailability.put(roomType, roomAvailability.get(roomType) - 1);
