@@ -69,6 +69,11 @@ public class BookMyStay {
         }
         return bookings;
     }
+}
+
+class BookingThread extends Thread {
+    private SharedBookingQueue bookingQueue;
+    private SharedInventory inventory;
 
     static void displayInventory(Map<String, Integer> inventory) {
         System.out.println("\nCurrent Inventory:");
@@ -84,7 +89,24 @@ public class BookMyStay {
         bookings.forEach(b -> System.out.println("  " + b));
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
+
+        System.out.println("========================================");
+        System.out.println(" UC11 - Concurrent Booking Simulation ");
+        System.out.println("========================================\n");
+
+        SharedInventory    inventory    = new SharedInventory();
+        SharedBookingQueue bookingQueue = new SharedBookingQueue();
+
+        // Add booking requests to shared queue
+        bookingQueue.addRequest(new Reservation("Alice",   "Single", 2));
+        bookingQueue.addRequest(new Reservation("Bob",     "Double", 3));
+        bookingQueue.addRequest(new Reservation("Carol",   "Suite",  1));
+        bookingQueue.addRequest(new Reservation("David",   "Single", 2));
+        bookingQueue.addRequest(new Reservation("Eve",     "Double", 1));
+        bookingQueue.addRequest(new Reservation("Frank",   "Single", 3));
+        bookingQueue.addRequest(new Reservation("Grace",   "Suite",  2));
+        bookingQueue.addRequest(new Reservation("Henry",   "Single", 1));
 
         System.out.println("========================================");
         System.out.println(" UC12 - Data Persistence & System Recovery ");
