@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -105,6 +106,7 @@ class BookingThread extends Thread {
         this.bookingQueue = bookingQueue;
         this.inventory    = inventory;
     }
+}
 
     @Override
     public void run() {
