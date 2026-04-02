@@ -1,191 +1,172 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.Stack;
+import java.util.Queue;
 
 class Reservation {
-    private String reservationId;
     private String guestName;
     private String roomType;
-    private String roomId;
     private int nights;
-    private boolean cancelled;
 
-    Reservation(String reservationId, String guestName,
-                String roomType, String roomId, int nights) {
-        this.reservationId = reservationId;
-        this.guestName     = guestName;
-        this.roomType      = roomType;
-        this.roomId        = roomId;
-        this.nights        = nights;
-        this.cancelled     = false;
+    Reservation(String guestName, String roomType, int nights) {
+        this.guestName = guestName;
+        this.roomType  = roomType;
+        this.nights    = nights;
     }
 
-    public String getReservationId() { return reservationId; }
-    public String getGuestName()     { return guestName; }
-    public String getRoomType()      { return roomType; }
-    public String getRoomId()        { return roomId; }
-    public int getNights()           { return nights; }
-    public boolean isCancelled()     { return cancelled; }
-    public void setCancelled()       { this.cancelled = true; }
+    public String getGuestName() { return guestName; }
+    public String getRoomType()  { return roomType; }
+    public int getNights()       { return nights; }
 }
 
-class RoomInventory {
+class SharedInventory {
     private Map<String, Integer> roomAvailability;
+    private Map<String, Integer> roomCounter;
 
-    RoomInventory() {
+    SharedInventory() {
         roomAvailability = new HashMap<>();
-        roomAvailability.put("Single", 2);
-        roomAvailability.put("Double", 1);
+        roomAvailability.put("Single", 3);
+        roomAvailability.put("Double", 2);
         roomAvailability.put("Suite",  1);
+
+        roomCounter = new HashMap<>();
+        roomCounter.put("Single", 0);
+        roomCounter.put("Double", 0);
+        roomCounter.put("Suite",  0);
     }
 
-    public Map<String, Integer> getRoomAvailability() {
-        return roomAvailability;
-    }
+    public synchronized boolean allocateRoom(Reservation reservation) {
+        String roomType = reservation.getRoomType();
 
-    public void decrementAvailability(String roomType) {
-        roomAvailability.put(roomType,
-                roomAvailability.getOrDefault(roomType, 0) - 1);
-    }
-}
+        if (!roomAvailability.containsKey(roomType)) {
+            System.out.println("[" + Thread.currentThread().getName() + "] "
+                    + "FAILED - Invalid room type: " + roomType);
+            return false;
+        }
 
-    public void incrementAvailability(String roomType) {
-        roomAvailability.put(roomType,
-                roomAvailability.getOrDefault(roomType, 0) + 1);
+        if (roomAvailability.get(roomType) <= 0) {
+            System.out.println("[" + Thread.currentThread().getName() + "] "
+                    + "FAILED - No " + roomType + " rooms available for "
+                    + reservation.getGuestName());
+            return false;
+        }
+
+        // Allocate room
+        int count = roomCounter.get(roomType) + 1;
+        roomCounter.put(roomType, count);
+        String roomId = roomType.substring(0, 3).toUpperCase() + "-" + count;
+        roomAvailability.put(roomType, roomAvailability.get(roomType) - 1);
+
+        System.out.println("[" + Thread.currentThread().getName() + "] "
+                + "CONFIRMED - Guest: " + reservation.getGuestName()
+                + " | Room: " + roomType
+                + " | Room ID: " + roomId
+                + " | Nights: " + reservation.getNights()
+                + " | Remaining: " + roomAvailability.get(roomType));
+        return true;
     }
 
     public void displayInventory() {
-        System.out.println("Current Inventory:");
+        System.out.println("\nFinal Inventory State:");
         for (Map.Entry<String, Integer> entry : roomAvailability.entrySet()) {
             System.out.println("  " + entry.getKey()
-                    + " : " + entry.getValue() + " room(s) available");
+                    + " : " + entry.getValue() + " room(s) remaining");
         }
     }
 }
 
-class CancellationService {
+class SharedBookingQueue {
+    private Queue<Reservation> queue;
 
-    private Map<String, Reservation> bookingRegistry;
-    private Stack<String> rollbackStack;
-    private RoomInventory inventory;
-
-    CancellationService(RoomInventory inventory) {
-        this.inventory       = inventory;
-        this.bookingRegistry = new HashMap<>();
-        this.rollbackStack   = new Stack<>();
+    SharedBookingQueue() {
+        queue = new LinkedList<>();
     }
 
-    public void registerBooking(Reservation reservation) {
-        bookingRegistry.put(reservation.getReservationId(), reservation);
-        inventory.decrementAvailability(reservation.getRoomType());
-        System.out.println("Booking registered : " + reservation.getReservationId()
-                + " -> " + reservation.getGuestName()
-                + " (" + reservation.getRoomType() + " | "
-                + reservation.getRoomId() + ")");
+    public synchronized void addRequest(Reservation reservation) {
+        queue.offer(reservation);
+    }
+
+    public synchronized Reservation pollRequest() {
+        return queue.poll();
+    }
+
+    public synchronized boolean isEmpty() {
+        return queue.isEmpty();
     }
 }
 
-    public void cancelBooking(String reservationId) {
-        System.out.println("\nCancellation requested for: " + reservationId);
+class BookingThread extends Thread {
+    private SharedBookingQueue bookingQueue;
+    private SharedInventory inventory;
 
-        if (!bookingRegistry.containsKey(reservationId)) {
-            System.out.println("Cancellation FAILED: Reservation '"
-                    + reservationId + "' not found.");
-            return;
-        }
-
-        Reservation reservation = bookingRegistry.get(reservationId);
-
-        if (reservation.isCancelled()) {
-            System.out.println("Cancellation FAILED: Reservation '"
-                    + reservationId + "' is already cancelled.");
-            return;
-        }
-
-        rollbackStack.push(reservation.getRoomId());
-        inventory.incrementAvailability(reservation.getRoomType());
-        reservation.setCancelled();
-
-        System.out.println("Cancellation CONFIRMED:");
-        System.out.println("  Reservation ID : " + reservation.getReservationId());
-        System.out.println("  Guest          : " + reservation.getGuestName());
-        System.out.println("  Room Type      : " + reservation.getRoomType());
-        System.out.println("  Room ID        : " + reservation.getRoomId()
-                + " released back to pool");
-        System.out.println("  Rollback Stack : " + rollbackStack);
+    BookingThread(String name, SharedBookingQueue bookingQueue,
+                  SharedInventory inventory) {
+        super(name);
+        this.bookingQueue = bookingQueue;
+        this.inventory    = inventory;
     }
 }
 
-    public void displayBookingStatus() {
-        System.out.println("\nBooking Registry Status:");
-        for (Map.Entry<String, Reservation> entry : bookingRegistry.entrySet()) {
-            Reservation r = entry.getValue();
-            System.out.println("  " + r.getReservationId()
-                    + " | " + r.getGuestName()
-                    + " | " + r.getRoomType()
-                    + " | Status: " + (r.isCancelled() ? "CANCELLED" : "CONFIRMED"));
+    @Override
+    public void run() {
+        while (true) {
+            Reservation reservation = bookingQueue.pollRequest();
+            if (reservation == null) break;
+
+            inventory.allocateRoom(reservation);
+
+            try {
+                Thread.sleep(50); // Simulate processing delay
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }
 
 public class BookMyStay {
 
-    public void validate(String guestName, String roomType,
-                         int nights, RoomInventory inventory)
-            throws InvalidBookingException {
-
-        // Validate guest name
-        if (guestName == null || guestName.trim().isEmpty()) {
-            throw new InvalidGuestNameException();
-        }
-
-        // Validate nights
-        if (nights <= 0) {
-            throw new InvalidNightsException(nights);
-        }
-
-        // Validate room type
-        if (!inventory.isValidRoomType(roomType)) {
-            throw new InvalidRoomTypeException(roomType);
-        }
-
-        // Validate availability
-        if (!inventory.isAvailable(roomType)) {
-            throw new RoomNotAvailableException(roomType);
-        }
-    }
-}
+    public static void main(String[] args) throws InterruptedException {
 
         System.out.println("========================================");
-        System.out.println(" UC10 - Booking Cancellation & Inventory Rollback ");
+        System.out.println(" UC11 - Concurrent Booking Simulation ");
         System.out.println("========================================\n");
 
-        RoomInventory inventory = new RoomInventory();
-        CancellationService cancellationService = new CancellationService(inventory);
+        SharedInventory    inventory    = new SharedInventory();
+        SharedBookingQueue bookingQueue = new SharedBookingQueue();
 
-        System.out.println("Registering Confirmed Bookings:");
-        cancellationService.registerBooking(
-                new Reservation("RES-001", "Alice", "Single", "SIN-1", 2));
-        cancellationService.registerBooking(
-                new Reservation("RES-002", "Bob",   "Double", "DOU-1", 3));
-        cancellationService.registerBooking(
-                new Reservation("RES-003", "Carol", "Suite",  "SUI-1", 1));
-        cancellationService.registerBooking(
-                new Reservation("RES-004", "David", "Single", "SIN-2", 4));
+        // Add booking requests to shared queue
+        bookingQueue.addRequest(new Reservation("Alice",   "Single", 2));
+        bookingQueue.addRequest(new Reservation("Bob",     "Double", 3));
+        bookingQueue.addRequest(new Reservation("Carol",   "Suite",  1));
+        bookingQueue.addRequest(new Reservation("David",   "Single", 2));
+        bookingQueue.addRequest(new Reservation("Eve",     "Double", 1));
+        bookingQueue.addRequest(new Reservation("Frank",   "Single", 3));
+        bookingQueue.addRequest(new Reservation("Grace",   "Suite",  2));
+        bookingQueue.addRequest(new Reservation("Henry",   "Single", 1));
 
-        System.out.println();
+        System.out.println("Launching concurrent booking threads...\n");
+
+        // Create and start booking threads
+        BookingThread t1 = new BookingThread("Thread-1", bookingQueue, inventory);
+        BookingThread t2 = new BookingThread("Thread-2", bookingQueue, inventory);
+        BookingThread t3 = new BookingThread("Thread-3", bookingQueue, inventory);
+
+        t1.start();
+        t2.start();
+        t3.start();
+
+        // Wait for all threads to complete
+        t1.join();
+        t2.join();
+        t3.join();
+
+        // Display final inventory
         inventory.displayInventory();
 
-        cancellationService.cancelBooking("RES-002");
-        cancellationService.cancelBooking("RES-002");
-        cancellationService.cancelBooking("RES-999");
-        cancellationService.cancelBooking("RES-004");
-
-        System.out.println();
-        inventory.displayInventory();
-        cancellationService.displayBookingStatus();
-
-        System.out.println("\nUC10 booking cancellation and rollback completed...");
+        System.out.println("\nNote:");
+        System.out.println("Synchronized methods ensured no double allocation.");
+        System.out.println("\nUC11 concurrent booking simulation completed...");
     }
 }
