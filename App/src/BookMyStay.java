@@ -93,6 +93,7 @@ class RoomAllocationService {
                 + " " + roomType + " room(s) left");
         System.out.println();
     }
+}
 
     public void displayAllocations() {
         System.out.println("Allocated Room Summary:");
