@@ -77,6 +77,7 @@ class BookingReportService {
             System.out.println("Total Cost     : Rs. " + r.getTotalCost());
         }
     }
+}
 
     public void displaySummaryReport(BookingHistory bookingHistory) {
         List<Reservation> history = bookingHistory.getHistory();
