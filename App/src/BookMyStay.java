@@ -49,6 +49,7 @@ class AddOnServiceManager {
         }
         System.out.println("  Total Add-On Cost : Rs. " + totalCost);
     }
+}
 
     public void displayAllReservationServices() {
         System.out.println("\nAll Reservation Add-On Summaries:");
