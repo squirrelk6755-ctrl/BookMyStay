@@ -1,77 +1,170 @@
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 
-/**
- * Room class representing basic room details
- */
-class Room {
+class Reservation {
+    private String guestName;
+    private String roomType;
+    private int nights;
 
-    int beds;
-    int size;
-    double pricePerNight;
-
-    public Room(int beds, int size, double pricePerNight) {
-        this.beds = beds;
-        this.size = size;
-        this.pricePerNight = pricePerNight;
+    Reservation(String guestName, String roomType, int nights) {
+        this.guestName = guestName;
+        this.roomType  = roomType;
+        this.nights    = nights;
     }
 
-    public void displayDetails() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + pricePerNight);
+    public String getGuestName() { return guestName; }
+    public String getRoomType()  { return roomType; }
+    public int getNights()       { return nights; }
+}
+
+class SharedInventory {
+    private Map<String, Integer> roomAvailability;
+    private Map<String, Integer> roomCounter;
+
+    SharedInventory() {
+        roomAvailability = new HashMap<>();
+        roomAvailability.put("Single", 3);
+        roomAvailability.put("Double", 2);
+        roomAvailability.put("Suite",  1);
+
+        roomCounter = new HashMap<>();
+        roomCounter.put("Single", 0);
+        roomCounter.put("Double", 0);
+        roomCounter.put("Suite",  0);
+    }
+
+    public synchronized boolean allocateRoom(Reservation reservation) {
+        String roomType = reservation.getRoomType();
+
+        if (!roomAvailability.containsKey(roomType)) {
+            System.out.println("[" + Thread.currentThread().getName() + "] "
+                    + "FAILED - Invalid room type: " + roomType);
+            return false;
+        }
+
+        if (roomAvailability.get(roomType) <= 0) {
+            System.out.println("[" + Thread.currentThread().getName() + "] "
+                    + "FAILED - No " + roomType + " rooms available for "
+                    + reservation.getGuestName());
+            return false;
+        }
+
+        // Allocate room
+        int count = roomCounter.get(roomType) + 1;
+        roomCounter.put(roomType, count);
+        String roomId = roomType.substring(0, 3).toUpperCase() + "-" + count;
+        roomAvailability.put(roomType, roomAvailability.get(roomType) - 1);
+
+        System.out.println("[" + Thread.currentThread().getName() + "] "
+                + "CONFIRMED - Guest: " + reservation.getGuestName()
+                + " | Room: " + roomType
+                + " | Room ID: " + roomId
+                + " | Nights: " + reservation.getNights()
+                + " | Remaining: " + roomAvailability.get(roomType));
+        return true;
+    }
+
+    public void displayInventory() {
+        System.out.println("\nFinal Inventory State:");
+        for (Map.Entry<String, Integer> entry : roomAvailability.entrySet()) {
+            System.out.println("  " + entry.getKey()
+                    + " : " + entry.getValue() + " room(s) remaining");
+        }
     }
 }
 
-/**
- * RoomInventory manages centralized availability using HashMap
- */
-class RoomInventory {
+class SharedBookingQueue {
+    private Queue<Reservation> queue;
 
-    private HashMap<String, Integer> availability;
-
-    public RoomInventory() {
-        availability = new HashMap<>();
-
-        // Initialize inventory
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
+    SharedBookingQueue() {
+        queue = new LinkedList<>();
     }
 
-    public int getAvailableRooms(String type) {
-        return availability.get(type);
+    public synchronized void addRequest(Reservation reservation) {
+        queue.offer(reservation);
     }
 
-    public void updateAvailability(String type, int count) {
-        availability.put(type, count);
+    public synchronized Reservation pollRequest() {
+        return queue.poll();
+    }
+
+    public synchronized boolean isEmpty() {
+        return queue.isEmpty();
     }
 }
 
-/**
- * Use Case 3: Inventory Setup
- */
+class BookingThread extends Thread {
+    private SharedBookingQueue bookingQueue;
+    private SharedInventory inventory;
+
+    BookingThread(String name, SharedBookingQueue bookingQueue,
+                  SharedInventory inventory) {
+        super(name);
+        this.bookingQueue = bookingQueue;
+        this.inventory    = inventory;
+    }
+
+    @Override
+    public void run() {
+        while (true) {
+            Reservation reservation = bookingQueue.pollRequest();
+            if (reservation == null) break;
+
+            inventory.allocateRoom(reservation);
+
+            try {
+                Thread.sleep(50); // Simulate processing delay
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+}
+
 public class BookMyStay {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
-        System.out.println("Hotel Room Inventory Status\n");
+        System.out.println("========================================");
+        System.out.println(" UC11 - Concurrent Booking Simulation ");
+        System.out.println("========================================\n");
 
-        Room single = new Room(1, 250, 1500.0);
-        Room doubleRoom = new Room(2, 400, 2500.0);
-        Room suite = new Room(3, 750, 5000.0);
+        SharedInventory    inventory    = new SharedInventory();
+        SharedBookingQueue bookingQueue = new SharedBookingQueue();
 
-        RoomInventory inventory = new RoomInventory();
+        // Add booking requests to shared queue
+        bookingQueue.addRequest(new Reservation("Alice",   "Single", 2));
+        bookingQueue.addRequest(new Reservation("Bob",     "Double", 3));
+        bookingQueue.addRequest(new Reservation("Carol",   "Suite",  1));
+        bookingQueue.addRequest(new Reservation("David",   "Single", 2));
+        bookingQueue.addRequest(new Reservation("Eve",     "Double", 1));
+        bookingQueue.addRequest(new Reservation("Frank",   "Single", 3));
+        bookingQueue.addRequest(new Reservation("Grace",   "Suite",  2));
+        bookingQueue.addRequest(new Reservation("Henry",   "Single", 1));
 
-        System.out.println("Single Room:");
-        single.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Single") + "\n");
+        System.out.println("Launching concurrent booking threads...\n");
 
-        System.out.println("Double Room:");
-        doubleRoom.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Double") + "\n");
+        // Create and start booking threads
+        BookingThread t1 = new BookingThread("Thread-1", bookingQueue, inventory);
+        BookingThread t2 = new BookingThread("Thread-2", bookingQueue, inventory);
+        BookingThread t3 = new BookingThread("Thread-3", bookingQueue, inventory);
 
-        System.out.println("Suite Room:");
-        suite.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Suite"));
+        t1.start();
+        t2.start();
+        t3.start();
+
+        // Wait for all threads to complete
+        t1.join();
+        t2.join();
+        t3.join();
+
+        // Display final inventory
+        inventory.displayInventory();
+
+        System.out.println("\nNote:");
+        System.out.println("Synchronized methods ensured no double allocation.");
+        System.out.println("\nUC11 concurrent booking simulation completed...");
     }
 }
