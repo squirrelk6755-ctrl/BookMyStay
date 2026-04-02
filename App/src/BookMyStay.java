@@ -1,77 +1,104 @@
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-/**
- * Room class representing basic room details
- */
-class Room {
+class Service {
+    private String serviceName;
+    private double cost;
 
-    int beds;
-    int size;
-    double pricePerNight;
-
-    public Room(int beds, int size, double pricePerNight) {
-        this.beds = beds;
-        this.size = size;
-        this.pricePerNight = pricePerNight;
+    Service(String serviceName, double cost) {
+        this.serviceName = serviceName;
+        this.cost        = cost;
     }
 
-    public void displayDetails() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + pricePerNight);
+    public String getServiceName() { return serviceName; }
+    public double getCost()        { return cost; }
+}
+
+class AddOnServiceManager {
+    private Map<String, List<Service>> reservationServices;
+
+    AddOnServiceManager() {
+        reservationServices = new HashMap<>();
+    }
+
+    public void addService(String reservationId, Service service) {
+        reservationServices
+                .computeIfAbsent(reservationId, k -> new ArrayList<>())
+                .add(service);
+        System.out.println("Service added for " + reservationId
+                + " -> " + service.getServiceName()
+                + " (Rs. " + service.getCost() + ")");
+    }
+
+    public void displayServices(String reservationId) {
+        List<Service> services = reservationServices.get(reservationId);
+
+        System.out.println("\nAdd-On Services for Reservation: " + reservationId);
+        if (services == null || services.isEmpty()) {
+            System.out.println("  No services selected.");
+            return;
+        }
+
+        double totalCost = 0;
+        for (Service s : services) {
+            System.out.println("  - " + s.getServiceName()
+                    + " : Rs. " + s.getCost());
+            totalCost += s.getCost();
+        }
+        System.out.println("  Total Add-On Cost : Rs. " + totalCost);
+    }
+
+    public void displayAllReservationServices() {
+        System.out.println("\nAll Reservation Add-On Summaries:");
+        for (Map.Entry<String, List<Service>> entry : reservationServices.entrySet()) {
+            String reservationId = entry.getKey();
+            List<Service> services = entry.getValue();
+            double total = 0;
+            for (Service s : services) total += s.getCost();
+            System.out.println("  " + reservationId
+                    + " -> " + services.size()
+                    + " service(s), Total: Rs. " + total);
+        }
     }
 }
 
-/**
- * RoomInventory manages centralized availability using HashMap
- */
-class RoomInventory {
-
-    private HashMap<String, Integer> availability;
-
-    public RoomInventory() {
-        availability = new HashMap<>();
-
-        // Initialize inventory
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
-    }
-
-    public int getAvailableRooms(String type) {
-        return availability.get(type);
-    }
-
-    public void updateAvailability(String type, int count) {
-        availability.put(type, count);
-    }
-}
-
-/**
- * Use Case 3: Inventory Setup
- */
 public class BookMyStay {
 
     public static void main(String[] args) {
 
-        System.out.println("Hotel Room Inventory Status\n");
+        System.out.println("========================================");
+        System.out.println(" UC7 - Add-On Service Selection ");
+        System.out.println("========================================\n");
 
-        Room single = new Room(1, 250, 1500.0);
-        Room doubleRoom = new Room(2, 400, 2500.0);
-        Room suite = new Room(3, 750, 5000.0);
+        AddOnServiceManager serviceManager = new AddOnServiceManager();
 
-        RoomInventory inventory = new RoomInventory();
+        // Guest Alice selects add-on services for reservation RES-001
+        System.out.println("Processing Add-Ons for RES-001 (Alice):");
+        serviceManager.addService("RES-001", new Service("Breakfast",       350.0));
+        serviceManager.addService("RES-001", new Service("Airport Pickup",  800.0));
+        serviceManager.addService("RES-001", new Service("Spa Package",    1500.0));
 
-        System.out.println("Single Room:");
-        single.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Single") + "\n");
+        // Guest Bob selects add-on services for reservation RES-002
+        System.out.println("\nProcessing Add-Ons for RES-002 (Bob):");
+        serviceManager.addService("RES-002", new Service("Breakfast",      350.0));
+        serviceManager.addService("RES-002", new Service("Late Checkout",  500.0));
 
-        System.out.println("Double Room:");
-        doubleRoom.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Double") + "\n");
+        // Guest Carol selects no add-on services for reservation RES-003
+        System.out.println("\nProcessing Add-Ons for RES-003 (Carol):");
+        System.out.println("No add-on services selected.");
 
-        System.out.println("Suite Room:");
-        suite.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Suite"));
+        // Display services per reservation
+        serviceManager.displayServices("RES-001");
+        serviceManager.displayServices("RES-002");
+        serviceManager.displayServices("RES-003");
+
+        // Display overall summary
+        serviceManager.displayAllReservationServices();
+
+        System.out.println("\nNote:");
+        System.out.println("Core booking and inventory state remain unchanged.");
+        System.out.println("\nUC7 add-on service selection completed...");
     }
 }
