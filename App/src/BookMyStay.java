@@ -1,77 +1,80 @@
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
 
-/**
- * Room class representing basic room details
- */
-class Room {
+class Reservation {
+    private String guestName;
+    private String roomType;
+    private int nights;
 
-    int beds;
-    int size;
-    double pricePerNight;
-
-    public Room(int beds, int size, double pricePerNight) {
-        this.beds = beds;
-        this.size = size;
-        this.pricePerNight = pricePerNight;
+    Reservation(String guestName, String roomType, int nights) {
+        this.guestName = guestName;
+        this.roomType  = roomType;
+        this.nights    = nights;
     }
 
-    public void displayDetails() {
-        System.out.println("Beds: " + beds);
-        System.out.println("Size: " + size + " sqft");
-        System.out.println("Price per night: " + pricePerNight);
+    public String getGuestName() { return guestName; }
+    public String getRoomType()  { return roomType; }
+    public int getNights()       { return nights; }
+}
+
+class BookingRequestQueue {
+
+    private Queue<Reservation> requestQueue;
+
+    BookingRequestQueue() {
+        requestQueue = new LinkedList<>();
+    }
+
+    public void addRequest(Reservation reservation) {
+        requestQueue.offer(reservation);
+        System.out.println("Request added: " + reservation.getGuestName()
+                + " -> " + reservation.getRoomType()
+                + " for " + reservation.getNights() + " night(s)");
+    }
+
+    public void displayQueue() {
+        System.out.println("\nCurrent Booking Request Queue (FIFO Order):");
+        if (requestQueue.isEmpty()) {
+            System.out.println("No pending requests.");
+            return;
+        }
+        int position = 1;
+        for (Reservation r : requestQueue) {
+            System.out.println(position++ + ". Guest: " + r.getGuestName()
+                    + " | Room: " + r.getRoomType()
+                    + " | Nights: " + r.getNights());
+        }
+    }
+
+    public Queue<Reservation> getRequestQueue() {
+        return requestQueue;
     }
 }
 
-/**
- * RoomInventory manages centralized availability using HashMap
- */
-class RoomInventory {
-
-    private HashMap<String, Integer> availability;
-
-    public RoomInventory() {
-        availability = new HashMap<>();
-
-        // Initialize inventory
-        availability.put("Single", 5);
-        availability.put("Double", 3);
-        availability.put("Suite", 2);
-    }
-
-    public int getAvailableRooms(String type) {
-        return availability.get(type);
-    }
-
-    public void updateAvailability(String type, int count) {
-        availability.put(type, count);
-    }
-}
-
-/**
- * Use Case 3: Inventory Setup
- */
 public class BookMyStay {
 
     public static void main(String[] args) {
 
-        System.out.println("Hotel Room Inventory Status\n");
+        System.out.println("========================================");
+        System.out.println(" UC5 - Booking Request (First-Come-First-Served) ");
+        System.out.println("========================================\n");
 
-        Room single = new Room(1, 250, 1500.0);
-        Room doubleRoom = new Room(2, 400, 2500.0);
-        Room suite = new Room(3, 750, 5000.0);
+        BookingRequestQueue bookingQueue = new BookingRequestQueue();
 
-        RoomInventory inventory = new RoomInventory();
+        // Guests submit booking requests
+        System.out.println("Incoming Booking Requests:");
+        bookingQueue.addRequest(new Reservation("Alice", "Single", 2));
+        bookingQueue.addRequest(new Reservation("Bob",   "Double", 3));
+        bookingQueue.addRequest(new Reservation("Carol", "Suite",  1));
+        bookingQueue.addRequest(new Reservation("David", "Single", 4));
 
-        System.out.println("Single Room:");
-        single.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Single") + "\n");
+        // Display queue in arrival order
+        bookingQueue.displayQueue();
 
-        System.out.println("Double Room:");
-        doubleRoom.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Double") + "\n");
+        System.out.println("\nNote:");
+        System.out.println("Requests are queued in FIFO order.");
+        System.out.println("No inventory changes have been made at this stage.");
 
-        System.out.println("Suite Room:");
-        suite.displayDetails();
-        System.out.println("Available Rooms: " + inventory.getAvailableRooms("Suite"));
+        System.out.println("\nUC5 booking request queue completed...");
     }
 }
