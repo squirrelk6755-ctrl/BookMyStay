@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -47,6 +48,7 @@ class RoomInventory {
         roomAvailability.put(roomType,
                 roomAvailability.getOrDefault(roomType, 0) - 1);
     }
+}
 
     public void incrementAvailability(String roomType) {
         roomAvailability.put(roomType,
@@ -82,6 +84,7 @@ class CancellationService {
                 + " (" + reservation.getRoomType() + " | "
                 + reservation.getRoomId() + ")");
     }
+}
 
     public void cancelBooking(String reservationId) {
         System.out.println("\nCancellation requested for: " + reservationId);
@@ -112,6 +115,7 @@ class CancellationService {
                 + " released back to pool");
         System.out.println("  Rollback Stack : " + rollbackStack);
     }
+}
 
     public void displayBookingStatus() {
         System.out.println("\nBooking Registry Status:");
@@ -127,7 +131,31 @@ class CancellationService {
 
 public class BookMyStay {
 
-    public static void main(String[] args) {
+    public void validate(String guestName, String roomType,
+                         int nights, RoomInventory inventory)
+            throws InvalidBookingException {
+
+        // Validate guest name
+        if (guestName == null || guestName.trim().isEmpty()) {
+            throw new InvalidGuestNameException();
+        }
+
+        // Validate nights
+        if (nights <= 0) {
+            throw new InvalidNightsException(nights);
+        }
+
+        // Validate room type
+        if (!inventory.isValidRoomType(roomType)) {
+            throw new InvalidRoomTypeException(roomType);
+        }
+
+        // Validate availability
+        if (!inventory.isAvailable(roomType)) {
+            throw new RoomNotAvailableException(roomType);
+        }
+    }
+}
 
         System.out.println("========================================");
         System.out.println(" UC10 - Booking Cancellation & Inventory Rollback ");
